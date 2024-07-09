@@ -17,30 +17,82 @@ $data = [
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-var ctx = document.getElementById('myChart').getContext('2d');
-var chartData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-    datasets: [
-        <?php foreach ($data as $year => $values): ?>
-            {
-                label: '<?php echo $year; ?>',
-                backgroundColor: 'rgba(<?php echo rand(0,255); ?>, <?php echo rand(0,255); ?>, <?php echo rand(0,255); ?>, 0.2)',
-                borderColor: 'rgba(<?php echo rand(0,255); ?>, <?php echo rand(0,255); ?>, <?php echo rand(0,255); ?>, 1)',
-                borderWidth: 1,
-                data: <?php echo json_encode($values); ?>
+    var ctx = document.getElementById('myChart').getContext('2d');
+    var chartData = <?php echo $chartDataJSON; ?>;
+
+
+    // Extracting unique years and months for labels
+    var years = chartData.map(data => data.year);
+    var uniqueYears = [...new Set(years)];
+    var months = chartData.map(data => data.month);
+    var uniqueMonths = [...new Set(months)];
+
+    // Sorting unique months (optional)
+    uniqueMonths.sort((a, b) => a - b);
+
+    // Prepare datasets for Chart.js
+    var datasets = [];
+    uniqueYears.forEach(year => {
+        var dataByYear = chartData.filter(data => data.year === year);
+        var dataValues = uniqueMonths.map(month => {
+            var foundData = dataByYear.find(data => data.month === month);
+            return foundData ? foundData.count : 0;
+        });
+
+        datasets.push({
+            label: year.toString(),
+            backgroundColor: 'rgba(' + getRandomColor() + ', 0.2)',
+            borderColor: 'rgba(' + getRandomColor() + ', 1)',
+            borderWidth: 1,
+            data: dataValues
+        });
+    });
+
+    var myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: uniqueMonths.map(month => getMonthLabel(month)),
+            datasets: datasets
+        },
+        options: {
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            var datasetLabel = context.dataset.label || '';
+                            var monthLabel = context.label || '';
+                            var value = context.raw || 0;
+                            return `${datasetLabel}:  ${monthLabel} (PM calls) - ${value} `;
+                        }
+                    }
+                }
             },
-        <?php endforeach; ?>
-    ]
-};
-var myChart = new Chart(ctx, {
-    type: 'bar',
-    data: chartData,
-    options: {
-        scales: {
-            y: {
-                beginAtZero: true
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Calls'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Month'
+                    }
+                }
             }
         }
+    });
+
+    // Function to generate random RGB color
+    function getRandomColor() {
+        return `${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}`;
     }
-});
+
+    // Function to get month label from month number (1-based)
+    function getMonthLabel(monthNumber) {
+        var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return monthNames[monthNumber - 1];
+    }
 </script>
